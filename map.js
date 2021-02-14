@@ -12,6 +12,8 @@ let map = L.map('map', {
     zoomControl: false
     });
 
+let features = []
+let setNames = []
 var sets = L.esri.featureLayer({
         url: 'https://services5.arcgis.com/dlrDjz89gx9qyfev/ArcGIS/rest/services/תכנית_הרמזור_ליישובים/FeatureServer/0',
         simplifyFactor: 0.5,
@@ -63,3 +65,63 @@ var sets = L.esri.featureLayer({
             }
         }
       }).addTo(map);
+
+sets.on('load',function(e){
+    layers = Object.values(sets._layers)
+    
+    layers.forEach(function(item){
+        feature = item.toGeoJSON()
+        features.push(feature)
+        setName = feature.properties.city_desc
+        if(setNames.indexOf(setName) < 0){
+            setNames.push(setName)
+        }
+    })
+    setNames = setNames.sort()
+
+    
+    if(!(setSelect._map)){
+        setSelect.addTo(map)
+    }
+    
+
+})
+
+
+L.Control.SelectSet = L.Control.extend({
+        onAdd: function(map) {
+            var container = L.DomUtil.create('div','leaflet-bar');
+    
+            container.style.width = '200px';
+            container.style.height = '40px';
+            container.style.backgroundColor = '#fff';
+    
+            var select = L.DomUtil.create('select');
+            select.name = 'setNames'
+            select.id = 'setNames'
+            for(var i=0;i<setNames.length;i++){
+                var option = L.DomUtil.create('option');
+                option.value = setNames[i]
+                option.innerText = setNames[i]
+                select.append(option)
+            }
+            select.onchange = function(e){
+                selectedName = document.getElementById('setNames').value
+                selectedFeatures = features.filter(feature => feature.properties.city_desc == selectedName)
+                selected = L.geoJson(selectedFeatures)
+                map.fitBounds(selected.getBounds())
+            }
+            
+            container.append(select)
+            return container;
+        },
+    
+        onRemove: function(map) {
+            // Nothing to do here
+        }
+    });
+    
+L.control.selectSet = function(opts) {
+        return new L.Control.SelectSet(opts);
+    }
+let setSelect = L.control.selectSet({ position: 'topleft' })
